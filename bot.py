@@ -27,12 +27,17 @@
 import telebot
 from PIL import Image
 import io
+import os
+from dotenv import load_dotenv
 
 from PIL.ImageMath import lambda_eval
 from telebot import types
 
+
 # Инициализация бота с использованием токена
-TOKEN = '7768394301:AAHICTm9t4vFKeVrQtEynn4-jEq61vNoevY'
+load_dotenv()  # Загружаем переменные из .env файла
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
 bot = telebot.TeleBot(TOKEN)
 
 # Состояние пользователя хранится в словаре
