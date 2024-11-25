@@ -123,6 +123,19 @@ def invert_colors(image):
         image = image.convert('RGB')
     return ImageOps.invert(image)
 
+def mirror_image(image, direction="horizontal"):
+    """
+    Функция отражения изображения по горизонтали или вертикали
+    image: Объект PIL.Image
+    direction: Направление отражения ("horizontal" или "vertical")
+    """
+    if direction == "horizontal":
+        return image.transpose(Image.FLIP_LEFT_RIGHT)
+    elif direction == "vertical":
+        return image.transpose(Image.FLIP_TOP_BOTTOM)
+    else:
+        raise ValueError("Invalid direction. Use 'horizontal' or 'vertical'.")
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     """
@@ -157,7 +170,10 @@ def get_options_keyboard():
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
     invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")  # Кнопка для инверсии
+    mirror_h_btn = types.InlineKeyboardButton("Mirror Horizontal", callback_data="mirror_horizontal")
+    mirror_v_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
+    keyboard.add(mirror_h_btn, mirror_v_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -174,6 +190,12 @@ def callback_query(call):
     elif call.data == "invert":
         bot.answer_callback_query(call.id, "Инверсия цветов изображения...")
         invert_and_send(call.message)  # Функция инверсии цветов и отправки изображения
+    elif call.data == "mirror_horizontal":
+        bot.answer_callback_query(call.id, "Отражение изображения по горизонтали...")
+        mirror_and_send(call.message, direction="horizontal")
+    elif call.data == "mirror_vertical":
+        bot.answer_callback_query(call.id, "Отражение изображения по вертикали...")
+        mirror_and_send(call.message, direction="vertical")
 
 def pixelate_and_send(message):
     """
@@ -226,6 +248,26 @@ def invert_and_send(message):
     # Сохраняем результат в поток и отправляем
     output_stream = io.BytesIO()
     inverted_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
+
+def mirror_and_send(message, direction):
+    """
+    Функция отражения изображения и отправки
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+
+    # Применяем отражение
+    mirrored_image = mirror_image(image, direction)
+
+    # Сохраняем результат в поток и отправляем
+    output_stream = io.BytesIO()
+    mirrored_image.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
 
