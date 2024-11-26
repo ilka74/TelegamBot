@@ -1,36 +1,65 @@
 """
-Многофункциональный телеграм-бот. Данный бот сейчас умеет работать с фотографиями и делать ASCII-арт.
+Многофункциональный телеграм-бот. Данный бот умеет обрабатывать фотографии и делать ASCII-арт.
 Проект использует библиотеки telebot (для взаимодействия с Telegram API) и Pillow (для работы с изображениями)
-Описание функций:
-- resize_image: функция изменения размера изображения;
-- grayify: преобразование изображения в градации серого;
-- image_to_ascii: преобразование изображения в ASCII-арт;
-- pixels_to_ascii: преобразование пикселей в ASCII-символы;
-- pixelate_image: пикселизация изображения;
-- bot.message_handler: обработчик команд /start и /help;
-- bot.message_handler: обработчик получения изображения;
-- get_options_keyboard: создание клавиатуры с вариантами действий;
-- bot.callback_query_handler: обработчик нажатия кнопок;
-- pixelate_and_send: функция пикселизации и отправки изображения;
-- ascii_and_send: функция преобразования изображения в ASCII-арт и отправки.
+
+Функции обработки изображений:
+- resize_image: изменяет размер изображения с сохранением пропорций.
+- grayify: преобразует цветное изображение в оттенки серого.
+- image_to_ascii: основная функция для преобразования изображения в ASCII-арт. Изменяет размер, преобразует
+в градации серого и затем в строку ASCII-символов.
+- pixels_to_ascii: конвертирует пиксели изображения в градациях серого в строку ASCII-символов,
+используя предопределенную строку ASCII_CHARS.
+- pixelate_image: принимает изображение и размер пикселя. Уменьшает изображение до размера,
+где один пиксель представляет большую область, затем увеличивает обратно, создавая пиксельный эффект.
+- invert_colors: функция инверсии цветов изображения
+- mirror_image: функция отражения изображения по горизонтали или вертикали
+- convert_to_heatmap: функция преобразования изображения в тепловую карту
+
+
+Обработчики событий:
+- @bot.message_handler(commands=['start', 'help']): для текстовых команд. Реагирует на команды /start и /help,
+отправляя приветственное сообщение.
+- @bot.message_handler(content_types=['photo']): для получения изображений. Реагирует на изображения,
+отправляемые пользователем, и предлагает варианты обработки.
+- @bot.callback_query_handler: (func=lambda call: True): определяет действия в ответ на выбор пользователя
+(например, пикселизация или ASCII-арт) и вызывает соответствующую функцию обработки.
+
+Функции отправки изображений:
+- pixelate_and_send: пикселизирует изображение и отправляет его обратно пользователю
+- ascii_and_send: преобразует изображение в ASCII-арт и отправляет результат в виде текстового сообщения
+- invert_and_send: инверсия цветов
+- mirror_and_send: отражение изображения
+- heatmap_and_send(message): преобразование изображения в тепловую карту.
+
+Инициализация бота:
+- bot.polling(none_stop=True).
 
 Описание импортов:
+* import io: импортирует модуль io, который обеспечивает возможность работы с потоками. Он используется здесь
+для обработки операций с файлами в памяти, таких как чтение и запись данных изображений;
+* import os: взаимодействие с операционной системой. В данном проекте используется для получения значения
+токена бота из переменной окружения;
 * import telebot: импортирует библиотеку telebot, которая используется для взаимодействия с API Telegram Bot.
 Позволяет создавать ботов, которые могут отправлять и получать сообщения, обрабатывать команды и многое другое;
 * from PIL import Image: импортирует модуль Image из библиотеки Pillow. Этот модуль используется для открытия,
 обработки и сохранения изображений в различных форматах;
-* import io: импортирует модуль io, который обеспечивает возможность работы с потоками. Он используется здесь
-для обработки операций с файлами в памяти, таких как чтение и запись данных изображений;
-* from telebot import types: импортирует модуль  types из библиотеки telebot, который содержит различные классы
-и функции для создания различных типов объектов Telegram, таких как клавиатуры и кнопки.
+* from PIL import ImageOps: импорт модуля ImageOps из библиотеки Pillow. Включает в себя различные операции,
+такие как инверсия цветов, поворот и обрезка изображений и др.;
+* from dotenv import load_dotenv: библиотека dotenv используется для загрузки переменных окружения из файла .env
+В проекте load_dotenv вызывается для загрузки переменной TELEGRAM_BOT_TOKEN из файла .env,
+чтобы обеспечить безопасность токена бота;
+* from telebot import types: импортирует модуль types из библиотеки telebot, который содержит различные классы
+и функции для создания различных типов объектов Telegram, таких, как клавиатуры и кнопки.
 """
 import io
 import os
 
 import telebot
 from PIL import Image, ImageOps
+from PIL.ImageOps import grayscale
 from dotenv import load_dotenv
 from telebot import types
+from telebot.apihelper import download_file
 
 # Инициализация бота с использованием токена
 load_dotenv()  # Загружаем переменные из .env файла
@@ -136,6 +165,16 @@ def mirror_image(image, direction="horizontal"):
     else:
         raise ValueError("Invalid direction. Use 'horizontal' or 'vertical'.")
 
+def convert_to_heatmap(image):
+    """
+    Преобразование изображения в тепловую карту
+    grayscale_image: преобразуем изображение в оттенки серого
+    heatmap_image: применяем градиент от синего (холодные) к красному (теплые области)
+    """
+    grayscale_image = image.convert("L")
+    heatmap_image = ImageOps.colorize(grayscale_image, black="blue", white="red")
+    return  heatmap_image
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     """
@@ -169,11 +208,13 @@ def get_options_keyboard():
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")  # Кнопка для инверсии
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
     mirror_h_btn = types.InlineKeyboardButton("Mirror Horizontal", callback_data="mirror_horizontal")
     mirror_v_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
+    heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_h_btn, mirror_v_btn)
+    keyboard.add(heatmap_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -196,6 +237,9 @@ def callback_query(call):
     elif call.data == "mirror_vertical":
         bot.answer_callback_query(call.id, "Отражение изображения по вертикали...")
         mirror_and_send(call.message, direction="vertical")
+    elif call.data == "heatmap":
+        bot.answer_callback_query(call.id, "Создание тепловой карты изображения...")
+        heatmap_and_send(call.message)
 
 def pixelate_and_send(message):
     """
@@ -268,6 +312,27 @@ def mirror_and_send(message, direction):
     # Сохраняем результат в поток и отправляем
     output_stream = io.BytesIO()
     mirrored_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
+
+def heatmap_and_send(message):
+    """
+    Функция преобразования изображения в тепловую карту, и его отправки
+    photo_id: получаем ID фото и загружаем изображение
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+
+    # Применяем тепловую карту
+    heatmap_image = convert_to_heatmap(image)
+
+    # Сохраняем результат в поток и отправляем
+    output_stream = io.BytesIO()
+    heatmap_image.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
 
