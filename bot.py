@@ -175,6 +175,42 @@ def convert_to_heatmap(image):
     heatmap_image = ImageOps.colorize(grayscale_image, black="blue", white="red")
     return  heatmap_image
 
+def resize_for_sticker(image, max_size=512):
+    """
+    Изменяет размер изображения для загрузки в Telegram в виде стикера.
+    - Максимальное измерение (ширина или высота) не превышает max_size.
+    - Гарантирует формат PNG и добавляет прозрачный фон, если его нет.
+    image: объект PIL.Image;
+    max_size: максимальный размер (ширина или высота)
+        """
+    # Получаем текущие размеры изображения
+    width, height = image.size
+
+    # Вычисляем коэффициент изменения размера
+    scaling_factor = max_size / max(width, height)
+
+    # Вычисляем новые размеры, сохраняя пропорции
+    new_width = int(width * scaling_factor)
+    new_height = int(height * scaling_factor)
+
+    # Изменяем размер изображения
+    resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    # Проверяем, есть ли прозрачный фон, и добавляем его, если нужно
+    if resized_image.mode != "RGBA":
+        resized_image = resized_image.convert("RGBA")
+
+    # Создаем новое изображение с прозрачным фоном
+    final_image = Image.new("RGBA", (max_size, max_size), (0, 0, 0, 0))
+
+    # Размещаем изображение по центру
+    offset_x = (max_size - new_width) // 2
+    offset_y = (max_size - new_height) // 2
+    final_image.paste(resized_image, (offset_x, offset_y), resized_image)
+
+    return final_image
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     """
@@ -212,9 +248,11 @@ def get_options_keyboard():
     mirror_h_btn = types.InlineKeyboardButton("Mirror Horizontal", callback_data="mirror_horizontal")
     mirror_v_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
+    sticker_btn = types.InlineKeyboardButton("Prepare Sticker", callback_data="sticker")
+
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_h_btn, mirror_v_btn)
-    keyboard.add(heatmap_btn)
+    keyboard.add(heatmap_btn, sticker_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -240,6 +278,9 @@ def callback_query(call):
     elif call.data == "heatmap":
         bot.answer_callback_query(call.id, "Создание тепловой карты изображения...")
         heatmap_and_send(call.message)
+    elif call.data == "sticker":
+        bot.answer_callback_query(call.id, "Подготовка изображения для стикера...")
+        prepare_sticker_and_send(call.message)
 
 def pixelate_and_send(message):
     """
@@ -335,6 +376,25 @@ def heatmap_and_send(message):
     heatmap_image.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(message.chat.id, output_stream)
+
+def prepare_sticker_and_send(message):
+    """
+    Подготавливает изображение для загрузки в Telegram как стикер и отправляет его.
+    """
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+
+    # Подготавливаем изображение для стикера
+    sticker_image = resize_for_sticker(image)
+
+    # Сохраняем изображение как PNG и отправляем
+    output_stream = io.BytesIO()
+    sticker_image.save(output_stream, format="PNG")
+    output_stream.seek(0)
+    bot.send_document(message.chat.id, output_stream, visible_file_name="sticker.png")
 
 # Запуск бота
 bot.polling(none_stop=True)
