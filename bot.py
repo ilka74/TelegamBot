@@ -15,7 +15,6 @@
 - mirror_image: функция отражения изображения по горизонтали или вертикали
 - convert_to_heatmap: функция преобразования изображения в тепловую карту
 
-
 Обработчики событий:
 - @bot.message_handler(commands=['start', 'help']): для текстовых команд. Реагирует на команды /start и /help,
 отправляя приветственное сообщение.
@@ -39,6 +38,7 @@
 для обработки операций с файлами в памяти, таких как чтение и запись данных изображений;
 * import os: взаимодействие с операционной системой. В данном проекте используется для получения значения
 токена бота из переменной окружения;
+* import random: импортирует модуль random для случайного выбора шутки;
 * import telebot: импортирует библиотеку telebot, которая используется для взаимодействия с API Telegram Bot.
 Позволяет создавать ботов, которые могут отправлять и получать сообщения, обрабатывать команды и многое другое;
 * from PIL import Image: импортирует модуль Image из библиотеки Pillow. Этот модуль используется для открытия,
@@ -53,6 +53,7 @@
 """
 import io
 import os
+import random
 
 import telebot
 from PIL import Image, ImageOps
@@ -72,6 +73,18 @@ user_states = {}
 
 # Набор символов для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
+
+# Список шуток
+JOKES = [
+    "Почему программисты не ходят в лес? Там слишком много багов!",
+    "Как программист варит кофе? Он пишет: 'COFFEE.EXE'.",
+    "Почему компьютер такой спокойный? У него есть много кеша!",
+    "Программистам не нужен будильник. У них есть исключения, которые их разбудят.",
+    "Почему программисты любят темную тему? Потому что светлая их ослепляет!",
+    "Что делает программист на пикнике? Дебажит баги на природе.",
+    "Почему кот-программист всегда остается спокойным? Потому что у него есть 9 потоков!",
+    "Почему программисты путают Хэллоуин и Рождество? Потому что 31 OCT = 25 DEC."
+]
 
 def resize_image(image, new_width=100):
     """
@@ -249,10 +262,11 @@ def get_options_keyboard():
     mirror_v_btn = types.InlineKeyboardButton("Mirror Vertical", callback_data="mirror_vertical")
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
     sticker_btn = types.InlineKeyboardButton("Prepare Sticker", callback_data="sticker")
+    joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="joke")
 
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_h_btn, mirror_v_btn)
-    keyboard.add(heatmap_btn, sticker_btn)
+    keyboard.add(heatmap_btn, sticker_btn, joke_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -281,6 +295,9 @@ def callback_query(call):
     elif call.data == "sticker":
         bot.answer_callback_query(call.id, "Подготовка изображения для стикера...")
         prepare_sticker_and_send(call.message)
+    elif call.data == 'joke':
+        bot.answer_callback_query(call.id, "Случайная шутка...")
+        random_joke_send(call.message)
 
 def pixelate_and_send(message):
     """
@@ -395,6 +412,14 @@ def prepare_sticker_and_send(message):
     sticker_image.save(output_stream, format="PNG")
     output_stream.seek(0)
     bot.send_document(message.chat.id, output_stream, visible_file_name="sticker.png")
+
+def random_joke_send(message):
+    """
+    Функция отправки случайной шутки.
+    Выбирает случайную шутку и отправляет эту шутку пользователю
+    """
+    joke = random.choice(JOKES)
+    bot.send_message(message.chat.id, joke)
 
 # Запуск бота
 bot.polling(none_stop=True)
