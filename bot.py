@@ -24,11 +24,13 @@
 (например, пикселизация или ASCII-арт) и вызывает соответствующую функцию обработки.
 
 Функции отправки изображений:
-- pixelate_and_send: пикселизирует изображение и отправляет его обратно пользователю
-- ascii_and_send: преобразует изображение в ASCII-арт и отправляет результат в виде текстового сообщения
-- invert_and_send: инверсия цветов
-- mirror_and_send: отражение изображения
-- heatmap_and_send(message): преобразование изображения в тепловую карту.
+- pixelate_and_send: пикселизирует изображение и отправляет его обратно пользователю;
+- ascii_and_send: преобразует изображение в ASCII-арт и отправляет результат в виде текстового сообщения;
+- invert_and_send: инверсия цветов;
+- mirror_and_send: отражение изображения;
+- heatmap_and_send: преобразование изображения в тепловую карту;
+- random_joke_send: выбирает случайную шутку из списка и отправляет эту шутку пользователю;
+- random_compliment_send: выбирает случайный комплимент из списка и отправляет его пользователю
 
 Инициализация бота:
 - bot.polling(none_stop=True).
@@ -74,7 +76,7 @@ user_states = {}
 # Набор символов для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
 
-# Список шуток
+# Списки шуток и комплиментов
 JOKES = [
     "Почему программисты не ходят в лес? Там слишком много багов!",
     "Как программист варит кофе? Он пишет: 'COFFEE.EXE'.",
@@ -84,6 +86,17 @@ JOKES = [
     "Что делает программист на пикнике? Дебажит баги на природе.",
     "Почему кот-программист всегда остается спокойным? Потому что у него есть 9 потоков!",
     "Почему программисты путают Хэллоуин и Рождество? Потому что 31 OCT = 25 DEC."
+]
+
+COMPLIMENTS = [
+    "Ты невероятно талантлив!",
+    "У тебя потрясающая улыбка!",
+    "Ты делаешь этот мир лучше!",
+    "У тебя отличное чувство юмора!",
+    "Ты умеешь вдохновлять других!",
+    "Ты настоящий профессионал в своем деле!",
+    "Ты излучаешь позитивную энергию!",
+    "Ты очень умный и сообразительный!"
 ]
 
 def resize_image(image, new_width=100):
@@ -263,10 +276,12 @@ def get_options_keyboard():
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
     sticker_btn = types.InlineKeyboardButton("Prepare Sticker", callback_data="sticker")
     joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="joke")
+    compliment_btn = types.InlineKeyboardButton("Random Compliment", callback_data="compliment")
 
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_h_btn, mirror_v_btn)
-    keyboard.add(heatmap_btn, sticker_btn, joke_btn)
+    keyboard.add(heatmap_btn, sticker_btn)
+    keyboard.add(joke_btn, compliment_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -295,9 +310,12 @@ def callback_query(call):
     elif call.data == "sticker":
         bot.answer_callback_query(call.id, "Подготовка изображения для стикера...")
         prepare_sticker_and_send(call.message)
-    elif call.data == 'joke':
+    elif call.data == "joke":
         bot.answer_callback_query(call.id, "Случайная шутка...")
         random_joke_send(call.message)
+    elif call.data == "compliment":
+        bot.answer_callback_query(call.id, "Случайный комплимент...")
+        random_compliment_send(call.message)
 
 def pixelate_and_send(message):
     """
@@ -416,10 +434,18 @@ def prepare_sticker_and_send(message):
 def random_joke_send(message):
     """
     Функция отправки случайной шутки.
-    Выбирает случайную шутку и отправляет эту шутку пользователю
+    Выбирает случайную шутку из списка и отправляет эту шутку пользователю
     """
     joke = random.choice(JOKES)
     bot.send_message(message.chat.id, joke)
+
+def random_compliment_send(message):
+    """
+    Функция отправки случайного комплимента.
+    Выбирает случайный комплимент из списка и отправляет его пользователю.
+    """
+    compliment = random.choice(COMPLIMENTS)
+    bot.send_message(message.chat.id, compliment)
 
 # Запуск бота
 bot.polling(none_stop=True)
