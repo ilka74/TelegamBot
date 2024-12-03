@@ -30,7 +30,8 @@
 - mirror_and_send: отражение изображения;
 - heatmap_and_send: преобразование изображения в тепловую карту;
 - random_joke_send: выбирает случайную шутку из списка и отправляет эту шутку пользователю;
-- random_compliment_send: выбирает случайный комплимент из списка и отправляет его пользователю
+- random_compliment_send: выбирает случайный комплимент из списка и отправляет его пользователю;
+- flip_coin_send: функция подбрасывания монетки и отправки результата.
 
 Инициализация бота:
 - bot.polling(none_stop=True).
@@ -277,11 +278,12 @@ def get_options_keyboard():
     sticker_btn = types.InlineKeyboardButton("Prepare Sticker", callback_data="sticker")
     joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="joke")
     compliment_btn = types.InlineKeyboardButton("Random Compliment", callback_data="compliment")
+    flip_coin_btn = types.InlineKeyboardButton("Flip a Coin", callback_data="flip_coin")
 
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_h_btn, mirror_v_btn)
     keyboard.add(heatmap_btn, sticker_btn)
-    keyboard.add(joke_btn, compliment_btn)
+    keyboard.add(joke_btn, compliment_btn, flip_coin_btn)
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -316,6 +318,9 @@ def callback_query(call):
     elif call.data == "compliment":
         bot.answer_callback_query(call.id, "Случайный комплимент...")
         random_compliment_send(call.message)
+    elif call.data == "flip_coin":
+        bot.answer_callback_query(call.id, "Подбрасываем монетку...")
+        flip_coin_send(call.message)
 
 def pixelate_and_send(message):
     """
@@ -446,6 +451,13 @@ def random_compliment_send(message):
     """
     compliment = random.choice(COMPLIMENTS)
     bot.send_message(message.chat.id, compliment)
+
+def flip_coin_send(message):
+    """
+    Функция подбрасывания монетки и отправки результата
+    """
+    result = random.choice(["Орел", "Решка"])
+    bot.send_message(message.chat.id, f"Монетка подброшена: {result}!")
 
 # Запуск бота
 bot.polling(none_stop=True)
